@@ -1,0 +1,302 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: medical-consultation
+  labels:
+    app: backend
+    version: v1
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+        version: v1
+    spec:
+      priorityClassName: medical-critical
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - backend
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: backend
+        image: ghcr.io/zgsddzwj/intelligent_consultation/backend:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: APP_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: medical-config
+              key: APP_NAME
+        - name: ENVIRONMENT
+          valueFrom:
+            configMapKeyRef:
+              name: medical-config
+              key: ENVIRONMENT
+        - name: DEBUG
+          valueFrom:
+            configMapKeyRef:
+              name: medical-config
+              key: DEBUG
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: medical-config
+              key: LOG_LEVEL
+        - name: CORS_ORIGINS
+          valueFrom:
+            configMapKeyRef:
+              name: medical-config
+              key: CORS_ORIGINS
+        - name: TRUSTED_HOSTS
+          valueFrom:
+            configMapKeyRef:
+              name: medical-config
+              key: TRUSTED_HOSTS
+        # 注意：K8s env 只解析先定义变量的 $(VAR) 引用，必须先声明 POSTGRES_* 再组装 DATABASE_URL
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: medical-secrets
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: medical-secrets
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: medical-secrets
+              key: POSTGRES_DB
+        - name: DATABASE_URL
+          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres-service:5432/$(POSTGRES_DB)"
+        - name: REDIS_URL
+          value: "redis://redis-service:6379/0"
+        - name: NEO4J_URI
+          valueFrom:
+            configMapKeyRef:
+              name: medical-config
+              key: NEO4J_URI
+        - name: NEO4J_USER
+          valueFrom:
+            secretKeyRef:
+              name: medical-secrets
+              key: NEO4J_USER
+        - name: NEO4J_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: medical-secrets
+              key: NEO4J_PASSWORD
+        - name: MILVUS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: medical-config
+              key: MILVUS_HOST
+        - name: MILVUS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: medical-config
+              key: MILVUS_PORT
+        - name: SILICONFLOW_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: medical-secrets
+              key: SILICONFLOW_API_KEY
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: medical-secrets
+              key: SECRET_KEY
+        - name: ENABLE_AUTH_MIDDLEWARE
+          valueFrom:
+            configMapKeyRef:
+              name: medical-config
+              key: ENABLE_AUTH_MIDDLEWARE
+        - name: RATE_LIMIT_FAIL_CLOSED
+          valueFrom:
+            configMapKeyRef:
+              name: medical-config
+              key: RATE_LIMIT_FAIL_CLOSED
+        - name: STARTUP_FAIL_FAST
+          valueFrom:
+            configMapKeyRef:
+              name: medical-config
+              key: STARTUP_FAIL_FAST
+        - name: METRICS_ACCESS_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: medical-secrets
+              key: METRICS_ACCESS_TOKEN
+              optional: true
+        - name: LANGFUSE_PUBLIC_KEY
+          valueFrom:
+            secretKeyRef:
+              name: medical-secrets
+              key: LANGFUSE_PUBLIC_KEY
+        - name: LANGFUSE_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: medical-secrets
+              key: LANGFUSE_SECRET_KEY
+        - name: OBJECT_STORAGE_TYPE
+          valueFrom:
+            configMapKeyRef:
+              name: medical-config
+              key: OBJECT_STORAGE_TYPE
+        - name: OBJECT_STORAGE_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: medical-config
+              key: OBJECT_STORAGE_ENDPOINT
+        - name: OBJECT_STORAGE_BUCKET
+          valueFrom:
+            configMapKeyRef:
+              name: medical-config
+              key: OBJECT_STORAGE_BUCKET
+        - name: OBJECT_STORAGE_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: medical-secrets
+              key: OBJECT_STORAGE_ACCESS_KEY
+        - name: OBJECT_STORAGE_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: medical-secrets
+              key: OBJECT_STORAGE_SECRET_KEY
+        - name: OBJECT_STORAGE_USE_SSL
+          valueFrom:
+            configMapKeyRef:
+              name: medical-config
+              key: OBJECT_STORAGE_USE_SSL
+        - name: MAX_UPLOAD_SIZE
+          valueFrom:
+            configMapKeyRef:
+              name: medical-config
+              key: MAX_UPLOAD_SIZE
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /live
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /ready
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 30
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          runAsUser: 999
+          capabilities:
+            drop:
+            - ALL
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+  namespace: medical-consultation
+spec:
+  selector:
+    app: backend
+  ports:
+  - port: 8000
+    targetPort: 8000
+    name: http
+  type: ClusterIP
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: backend-pdb
+  namespace: medical-consultation
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: backend
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend-hpa
+  namespace: medical-consultation
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backend
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
