@@ -1,0 +1,254 @@
+"""应用配置管理"""
+import warnings
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import model_validator
+from typing import List, Optional
+from functools import lru_cache
+
+
+class Settings(BaseSettings):
+    """应用配置"""
+
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
+    
+    # Application
+    APP_NAME: str = "智能医疗管家平台"
+    APP_VERSION: str = "3.3.0"
+    DEBUG: bool = True
+    ENVIRONMENT: str = "development"  # development | staging | production
+    
+    # API
+    API_V1_PREFIX: str = "/api/v1"
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+    ]  # 生产环境应通过环境变量 CORS_ORIGINS 配置，多个源用逗号分隔
+    
+    # Database
+    DATABASE_URL: str = ""  # 从.env读取，格式: postgresql://user:password@host:port/dbname
+    DATABASE_POOL_SIZE: int = 10
+    DATABASE_MAX_OVERFLOW: int = 20
+    
+    # Redis
+    REDIS_URL: str = ""  # 从.env读取，格式: redis://host:port/db
+    REDIS_CACHE_TTL: int = 3600
+    
+    # Neo4j
+    NEO4J_URI: str = "bolt://localhost:7687"
+    NEO4J_USER: str = "neo4j"
+    NEO4J_PASSWORD: str = ""  # 从.env读取
+    
+    # Milvus
+    MILVUS_HOST: str = "localhost"
+    MILVUS_PORT: int = 19530
+    MILVUS_COLLECTION_NAME: str = "medical_documents"
+    
+    # LLM Provider Configuration
+    LLM_PROVIDER: str = "siliconflow"  # 统一使用硅基流动
+    FALLBACK_LLM_PROVIDER: str = ""  # 降级Provider，留空表示不降级
+
+    # LLM - 硅基流动 (SiliconFlow, 兼容OpenAI API)
+    SILICONFLOW_API_KEY: str = ""  # 从.env读取
+    SILICONFLOW_BASE_URL: str = "https://api.siliconflow.cn/v1"  # 硅基流动 API端点
+    SILICONFLOW_MODEL: str = "deepseek-ai/DeepSeek-V3"  # 默认对话模型
+    SILICONFLOW_EMBEDDING_MODEL: str = "BAAI/bge-large-zh-v1.5"  # 默认嵌入模型
+    SILICONFLOW_VISION_MODEL: str = "Qwen/Qwen2.5-VL-72B-Instruct"  # 默认多模态视觉模型
+    
+    # Security
+    SECRET_KEY: str = ""  # JWT密钥，从.env读取；生产环境必须配置，否则自动生成（每次重启后旧token失效）
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    ENCRYPTION_KEY: Optional[str] = None  # 数据加密密钥（Fernet格式）
+    ENABLE_RBAC: bool = True  # 启用RBAC
+    ENABLE_DATA_ENCRYPTION: bool = False  # 启用数据加密（默认关闭，需要配置密钥）
+    ENABLE_AUTH_MIDDLEWARE: bool = False  # 启用认证中间件（默认关闭，开发环境）
+    TRUSTED_HOSTS: List[str] = ["localhost", "127.0.0.1", "*.localhost"]
+    METRICS_ACCESS_TOKEN: Optional[str] = None  # 生产环境建议配置，保护 /metrics
+    STARTUP_FAIL_FAST: bool = True  # 生产环境：必需依赖或密钥异常时拒绝启动
+    RATE_LIMIT_FAIL_CLOSED: bool = False  # 生产环境建议 true：Redis 不可用时拒绝请求
+    
+    # Trusted Hosts (生产环境必须配置)
+    ALLOWED_HOSTS: List[str] = ["*"]  # 生产环境应配置具体域名，如 ["api.example.com"]
+    
+    # Request Limits
+    MAX_REQUEST_BODY_SIZE: int = 10 * 1024 * 1024  # 请求体最大10MB
+    REQUEST_TIMEOUT: int = 60  # 请求超时时间（秒）
+    
+    # Rate Limiting
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_CALLS: int = 100  # 允许的请求数
+    RATE_LIMIT_PERIOD: int = 60  # 时间窗口（秒）
+    
+    # File Storage (Local - for development only)
+    UPLOAD_DIR: str = "./data/documents"
+    MAX_UPLOAD_SIZE: int = 10485760  # 10MB
+    
+    # Object Storage Configuration
+    OBJECT_STORAGE_TYPE: str = "minio"  # "minio" | "s3" | "oss" | "local"
+    OBJECT_STORAGE_ENDPOINT: str = "localhost:9000"  # MinIO/S3/OSS端点
+    OBJECT_STORAGE_ACCESS_KEY: str = ""  # 从.env读取
+    OBJECT_STORAGE_SECRET_KEY: str = ""  # 从.env读取
+    OBJECT_STORAGE_BUCKET: str = "medical-documents"
+    OBJECT_STORAGE_REGION: Optional[str] = None  # S3/OSS区域
+    OBJECT_STORAGE_USE_SSL: bool = False  # 是否使用SSL
+    
+    # Logging
+    LOG_LEVEL: str = "INFO"
+    LOG_FILE: str = "logs/app.log"  # 相对于backend目录
+    
+    # MCP Server
+    MCP_SERVER_HOST: str = "localhost"
+    MCP_SERVER_PORT: int = 8001
+    
+    # Advanced RAG Configuration
+    ENABLE_ADVANCED_RAG: bool = True
+    ENABLE_MULTI_RETRIEVAL: bool = True
+    ENABLE_RERANK: bool = True
+    ENABLE_ML_RERANK: bool = True
+    ENABLE_INTENT_CLASSIFICATION: bool = True
+    ENABLE_RELEVANCE_SCORING: bool = True
+    ENABLE_QUERY_UNDERSTANDING: bool = True
+    ENABLE_RANKING_OPTIMIZATION: bool = True
+    
+    # Multi-Retrieval Weights
+    VECTOR_RETRIEVAL_WEIGHT: float = 0.4
+    BM25_RETRIEVAL_WEIGHT: float = 0.3
+    SEMANTIC_RETRIEVAL_WEIGHT: float = 0.2
+    KG_RETRIEVAL_WEIGHT: float = 0.1
+    
+    # Reranker Configuration
+    BGE_RERANKER_MODEL: str = "BAAI/bge-reranker-base"
+    RERANK_TOP_K: int = 10
+    
+    # ML Models Directory
+    ML_MODELS_DIR: str = "./models"
+    INTENT_MODEL_DIR: str = "./models/intent"
+    RELEVANCE_MODEL_DIR: str = "./models/relevance"
+    QUERY_MODEL_DIR: str = "./models/query"
+    RANKING_MODEL_DIR: str = "./models/ranking"
+    RERANKER_MODEL_DIR: str = "./models/reranker"
+    
+    # PDF Image Processing
+    ENABLE_PDF_IMAGE_PROCESSING: bool = True
+    ENABLE_OCR: bool = True
+    ENABLE_MULTIMODAL_LLM: bool = True
+    
+    # MinerU Configuration
+    ENABLE_MINERU: bool = False  # 是否启用MinerU
+    MINERU_API_URL: str = ""  # MinerU服务地址
+    MINERU_API_KEY: Optional[str] = None  # API密钥（如果需要）
+    MINERU_OUTPUT_DIR: str = "./data/mineru_output"  # MinerU输出目录
+    MINERU_TIMEOUT: int = 300  # 超时时间（秒）
+    
+    # PDF Parser Configuration
+    PDF_PARSER_TYPE: str = "pdfplumber"  # "pdfplumber" | "mineru"
+    PDF_PARSER_FALLBACK: bool = True  # MinerU失败时是否回退到pdfplumber
+    
+    # Table/Image Description Configuration
+    ENABLE_TABLE_DESCRIPTION: bool = False
+    TABLE_DESCRIPTION_API_KEY: Optional[str] = None
+    TABLE_DESCRIPTION_MODEL: str = "deepseek-ai/DeepSeek-V3"
+    TABLE_DESCRIPTION_BASE_URL: str = "https://api.siliconflow.cn/v1"
+    
+    ENABLE_IMAGE_DESCRIPTION: bool = False
+    IMAGE_DESCRIPTION_API_KEY: Optional[str] = None
+    IMAGE_DESCRIPTION_MODEL: str = "Qwen/Qwen2.5-VL-72B-Instruct"
+    IMAGE_DESCRIPTION_BASE_URL: str = "https://api.siliconflow.cn/v1"
+    
+    # Export Configuration
+    PDF_EXPORT_DIR: str = "./data/pdf_exports"
+    ENABLE_PDF_EXPORT: bool = True
+    
+    # Langfuse Configuration
+    ENABLE_LANGFUSE: bool = True
+    LANGFUSE_PUBLIC_KEY: Optional[str] = None
+    LANGFUSE_SECRET_KEY: Optional[str] = None
+    LANGFUSE_HOST: str = "https://cloud.langfuse.com"  # 默认使用云服务，也可以使用自托管
+    
+    # LLM Performance Configuration
+    LLM_DEFAULT_TEMPERATURE: float = 0.7
+    LLM_DEFAULT_MAX_TOKENS: int = 2000
+    LLM_STREAM_ENABLED: bool = True
+    LLM_SEMANTIC_CACHE_ENABLED: bool = True
+    LLM_SEMANTIC_CACHE_THRESHOLD: float = 0.95  # 相似度阈值
+    
+    # Context Management
+    CONTEXT_MAX_TOKENS: int = 8000  # 最大上下文token数
+    CONTEXT_COMPRESSION_ENABLED: bool = True
+    CONTEXT_HISTORY_LIMIT: int = 10  # 保留的对话轮次
+    
+    # Prompt Engineering
+    PROMPT_VERSION: str = "v1.0"
+    ENABLE_PROMPT_AB_TEST: bool = False
+
+    # ===== 语音功能配置 =====
+    # ASR 语音识别
+    ASR_ENABLED: bool = True
+    ASR_MODEL: str = "paraformer-zh"  # FunASR 模型名
+    ASR_DEVICE: str = "cpu"  # "cpu" | "cuda"
+    ASR_VAD_MODEL: str = "fsmn-vad"
+    ASR_PUNC_MODEL: str = "ct-punc"
+    ASR_HOTWORDS: str = ""  # 医疗热词，逗号分隔
+    ASR_MAX_AUDIO_DURATION: int = 60  # 最大录音时长（秒）
+
+    # TTS 语音合成
+    TTS_ENABLED: bool = True
+    TTS_ENGINE: str = "edge-tts"  # "edge-tts" | "cosyvoice"
+    TTS_DEFAULT_VOICE: str = "zh-CN-XiaoxiaoNeural"  # Edge-TTS 默认音色
+    TTS_DEFAULT_RATE: str = "+0%"  # 语速
+    TTS_DEFAULT_VOLUME: str = "+0%"  # 音量
+    TTS_AUDIO_FORMAT: str = "mp3"  # "mp3" | "wav"
+
+    # 语音文件存储
+    VOICE_STORAGE_DIR: str = "./data/voice_files"  # 本地语音文件存储目录
+    VOICE_CACHE_TTL: int = 86400  # 语音缓存 24 小时
+
+    @model_validator(mode='after')
+    def apply_environment_defaults(self) -> 'Settings':
+        """按环境应用安全默认值"""
+        # 生产环境必须配置 SECRET_KEY
+        if not self.SECRET_KEY:
+            if self.ENVIRONMENT == "production":
+                raise ValueError(
+                    "生产环境必须配置 SECRET_KEY！"
+                    "请在 .env 文件或环境变量中设置 SECRET_KEY"
+                )
+            else:
+                import secrets
+                object.__setattr__(self, 'SECRET_KEY', secrets.token_urlsafe(32))
+                warnings.warn(
+                    "SECRET_KEY 未配置，已自动生成临时密钥。"
+                    "生产环境必须显式配置 SECRET_KEY！",
+                    RuntimeWarning
+                )
+
+        # 生产环境强制关闭 DEBUG
+        if self.ENVIRONMENT == "production" and self.DEBUG:
+            object.__setattr__(self, 'DEBUG', False)
+            warnings.warn(
+                "生产环境不应开启 DEBUG 模式，已自动关闭",
+                RuntimeWarning
+            )
+
+        # 生产环境强制开启 RATE_LIMIT_FAIL_CLOSED
+        if self.ENVIRONMENT == "production" and not self.RATE_LIMIT_FAIL_CLOSED:
+            object.__setattr__(self, 'RATE_LIMIT_FAIL_CLOSED', True)
+
+        # 生产环境强制开启认证中间件（防止整站 API 匿名可访问）
+        if self.ENVIRONMENT == "production" and not self.ENABLE_AUTH_MIDDLEWARE:
+            object.__setattr__(self, 'ENABLE_AUTH_MIDDLEWARE', True)
+            warnings.warn(
+                "生产环境已强制开启认证中间件（ENABLE_AUTH_MIDDLEWARE=True）",
+                RuntimeWarning
+            )
+
+        return self
+
+@lru_cache()
+def get_settings() -> Settings:
+    """获取配置实例（单例模式）"""
+    return Settings()
+

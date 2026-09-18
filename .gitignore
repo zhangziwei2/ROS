@@ -1,0 +1,113 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+venv/
+env/
+ENV/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+# 压缩的日志文件（注意：gitignore不支持行内注释，注释必须独立成行）
+backend/logs/*.zip
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+dist/
+dist-ssr/
+*.local
+
+# Testing
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+.hypothesis/
+
+# Frontend build
+frontend/dist/
+frontend/build/
+
+# ML Models (训练生成的模型文件)
+backend/models/*/
+!backend/models/.gitkeep
+
+# Data files (keep structure, ignore content)
+# 注意：data目录仅用于本地开发，生产环境使用对象存储
+data/documents/**/*
+!data/documents/.gitkeep
+!data/documents/**/.gitkeep
+data/knowledge_graph/**/*
+!data/knowledge_graph/.gitkeep
+!data/knowledge_graph/**/.gitkeep
+data/sample/**/*
+!data/sample/.gitkeep
+!data/sample/**/.gitkeep
+
+# 临时文件（文档处理时生成）
+data/temp/
+data/cache/
+
+# 语音文件（TTS 生成的音频，不纳入版本控制）
+backend/data/voice_files/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# OS
+Thumbs.db
+.DS_Store
+
+data/external/
+
+# 截屏文件（避免提交本地截图）
+截屏*.png
+截图*.png
+
+# 测试数据库文件
+test_*.db
+*.db-journal
